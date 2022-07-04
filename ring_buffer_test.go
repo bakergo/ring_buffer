@@ -1,6 +1,10 @@
 package main
 
-import "testing"
+import (
+	"testing"
+
+	"golang.org/x/exp/constraints"
+)
 
 func TestCap_EqualsSz(t *testing.T) {
 	b := New[int](10)
@@ -28,11 +32,7 @@ func TestRingBuffer_Append_Appends(t *testing.T) {
 
 	b.Append(data...)
 
-	for i, d := range data {
-		if b.Get(i) != d {
-			t.Errorf("expected %d got %d", d, b.Get(i))
-		}
-	}
+	AssertBufferExactly(t, b, data)
 }
 
 func TestRingBuffer_AppendOverEnd(t *testing.T) {
@@ -46,11 +46,7 @@ func TestRingBuffer_AppendOverEnd(t *testing.T) {
 	b.PopFirst(3)
 	b.Append(data2...)
 
-	for i, d := range expected {
-		if b.Get(i) != d {
-			t.Errorf("expected %d got %d", d, b.Get(i))
-		}
-	}
+	AssertBufferExactly(t, b, expected)
 }
 
 func TestRingBuffer_Prepend(t *testing.T) {
@@ -63,11 +59,7 @@ func TestRingBuffer_Prepend(t *testing.T) {
 	b.Prepend(data...)
 	b.Prepend(data2...)
 
-	for i, d := range expected {
-		if b.Get(i) != d {
-			t.Errorf("expected %d got %d", d, b.Get(i))
-		}
-	}
+	AssertBufferExactly(t, b, expected)
 }
 
 func TestRingBuffer_PrependOverEnd(t *testing.T) {
@@ -81,11 +73,7 @@ func TestRingBuffer_PrependOverEnd(t *testing.T) {
 	b.PopFirst(2)
 	b.Prepend(data2...)
 
-	for i, d := range expected {
-		if b.Get(i) != d {
-			t.Errorf("expected %d got %d", d, b.Get(i))
-		}
-	}
+	AssertBufferExactly(t, b, expected)
 }
 
 func TestPopLast_RemovesLast(t *testing.T) {
@@ -98,16 +86,8 @@ func TestPopLast_RemovesLast(t *testing.T) {
 	b.Append(data...)
 	pop := b.PopLast(2)
 
-	for i, d := range expected {
-		if b.Get(i) != d {
-			t.Errorf("expected %d got %d", d, b.Get(i))
-		}
-	}
-	for i, d := range popExpected {
-		if pop[i] != d {
-			t.Errorf("expected %d got %d", d, pop[i])
-		}
-	}
+	AssertBufferExactly(t, b, expected)
+	AssertSliceExactly(t, pop, popExpected)
 }
 
 func TestPopLast_Truncates(t *testing.T) {
@@ -118,17 +98,9 @@ func TestPopLast_Truncates(t *testing.T) {
 
 	b.Append(data...)
 	pop := b.PopLast(11)
-	if b.Len() != 0 {
-		t.Error("expected array to be clear now")
-	}
-	if len(pop) != len(popExpected) {
-		t.Errorf("Expected len to be %d was %d", len(popExpected), len(pop))
-	}
-	for i, d := range popExpected {
-		if pop[i] != d {
-			t.Errorf("expected %d got %d", d, pop[i])
-		}
-	}
+
+	AssertBufferExactly(t, b, []int{})
+	AssertSliceExactly(t, pop, popExpected)
 }
 
 func TestPopLastOverEnd(t *testing.T) {
@@ -142,23 +114,93 @@ func TestPopLastOverEnd(t *testing.T) {
 	b.Append(data...)
 	pop := b.PopLast(4)
 
-	if b.Len() != len(expected) {
-		t.Errorf("expected buffer to contain %d, got %d", len(expected),
-			b.Len())
-	}
-	for i, d := range expected {
-		if b.Get(i) != d {
-			t.Errorf("expected %d got %d", d, b.Get(i))
-		}
-	}
-	if len(pop) != len(popExpected) {
-		t.Errorf("Expected popped len to be %d was %d", len(popExpected), len(pop))
-	}
-	for i, d := range popExpected {
-		if pop[i] != d {
-			t.Errorf("expected %d got %d", d, pop[i])
-		}
-	}
+	AssertBufferExactly(t, b, expected)
+	AssertSliceExactly(t, pop, popExpected)
+}
+
+func TestPopLast_Empty(t *testing.T) {
+	b := New[int](5)
+
+	data := []int{}
+	expected := []int{}
+	popExpected := []int{}
+
+	b.Append(data...)
+	pop := b.PopLast(4)
+
+	AssertBufferExactly(t, b, expected)
+	AssertSliceExactly(t, pop, popExpected)
+}
+
+func TestPopFirst_RemovesAllItems(t *testing.T) {
+	b := New[int](10)
+
+	data := []int{1, 2, 3, 4, 5}
+	expected := []int{}
+	popExpected := []int{1, 2, 3, 4, 5}
+
+	b.Append(data...)
+	pop := b.PopFirst(11)
+
+	AssertBufferExactly(t, b, expected)
+	AssertSliceExactly(t, pop, popExpected)
+}
+
+func TestPopFirst_RemovesSomeFirst(t *testing.T) {
+	b := New[int](10)
+
+	data := []int{1, 2, 3, 4, 5}
+	expected := []int{3, 4, 5}
+	popExpected := []int{1, 2}
+
+	b.Append(data...)
+	pop := b.PopFirst(2)
+
+	AssertBufferExactly(t, b, expected)
+	AssertSliceExactly(t, pop, popExpected)
+}
+
+func TestPopFirst_OverEnd(t *testing.T) {
+	b := New[int](10)
+	b.head = 8
+
+	data := []int{1, 2, 3, 4, 5}
+	expected := []int{4, 5}
+	popExpected := []int{1, 2, 3}
+
+	b.Append(data...)
+	pop := b.PopFirst(3)
+
+	AssertSliceExactly(t, pop, popExpected)
+	AssertBufferExactly(t, b, expected)
+}
+
+func TestPopFirst_Full(t *testing.T) {
+	b := New[int](5)
+
+	data := []int{1, 2, 3, 4, 5}
+	expected := []int{}
+	popExpected := []int{1, 2, 3, 4, 5}
+
+	b.Append(data...)
+	pop := b.PopFirst(5)
+
+	AssertBufferExactly(t, b, expected)
+	AssertSliceExactly(t, pop, popExpected)
+}
+
+func TestPopFirst_Empty(t *testing.T) {
+	b := New[int](5)
+
+	data := []int{}
+	expected := []int{}
+	popExpected := []int{}
+
+	b.Append(data...)
+	pop := b.PopFirst(5)
+
+	AssertBufferExactly(t, b, expected)
+	AssertSliceExactly(t, pop, popExpected)
 }
 
 func TestRingBuffer_AppendRemoveAppend_Appends(t *testing.T) {
@@ -169,11 +211,7 @@ func TestRingBuffer_AppendRemoveAppend_Appends(t *testing.T) {
 	b.Append(data...)
 	b.Remove(2)
 
-	for i, d := range expected {
-		if b.Get(i) != d {
-			t.Errorf("expected %d got %d", d, b.Get(i))
-		}
-	}
+	AssertBufferExactly(t, b, expected)
 }
 
 func TestRingBuffer_AppendRemoveAll(t *testing.T) {
@@ -200,12 +238,28 @@ func TestRingBuffer_PopLeft(t *testing.T) {
 	b.Append(data...)
 	pop := b.PopFirst(2)
 
-	for i, d := range popExpected {
-		if pop[i] != d {
-			t.Errorf("expected %d got %d", d, pop[i])
+	AssertSliceExactly(t, pop, popExpected)
+	AssertBufferExactly(t, b, arrExpected)
+}
+
+func AssertSliceExactly[T constraints.Integer](t *testing.T, have []T, expect []T) {
+	if len(have) != len(expect) {
+		t.Errorf("expected slice to contain %d, got %d", len(expect),
+			len(have))
+	}
+	for i, d := range expect {
+		if have[i] != d {
+			t.Errorf("expected %d got %d", d, have[i])
 		}
 	}
-	for i, d := range arrExpected {
+}
+
+func AssertBufferExactly[T constraints.Integer](t *testing.T, b *RingBuffer[T], expected []T) {
+	if b.Len() != len(expected) {
+		t.Errorf("expected buffer to contain %d, got %d", len(expected),
+			b.Len())
+	}
+	for i, d := range expected {
 		if b.Get(i) != d {
 			t.Errorf("expected %d got %d", d, b.Get(i))
 		}

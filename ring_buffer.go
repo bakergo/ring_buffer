@@ -61,12 +61,15 @@ func (r *RingBuffer[T]) PopLast(num int) []T {
 		num = r.len
 	}
 	b := make([]T, num)
+	if num <= 0 {
+		return b
+	}
 	first := r.idx(r.len - num)
 	last := r.idx(r.len)
 
 	if first < last {
 		copy(b, r.buf[first:last])
-	} else if first > last {
+	} else if first >= last {
 		stride := cap(r.buf) - first
 		copy(b, r.buf[first:])
 		copy(b[stride:], r.buf[:last])
@@ -80,16 +83,21 @@ func (r *RingBuffer[T]) PopFirst(num int) []T {
 		num = r.len
 	}
 	b := make([]T, num)
-	head := (r.head + cap(r.buf) + num) % cap(r.buf)
-	items := cap(r.buf) - r.head
-	if items >= len(b) {
-		copy(b, r.buf[r.head:])
-	} else {
-		copy(b, r.buf[r.head:])
-		copy(b, r.buf[:head])
+	if num <= 0 {
+		return b
 	}
+
+	first := r.idx(0)
+	last := r.idx(num)
+	if first < last {
+		copy(b, r.buf[first:last])
+	} else if first >= last {
+		stride := cap(r.buf) - first
+		copy(b, r.buf[first:])
+		copy(b[stride:], r.buf[:last])
+	}
+	r.head = last
 	r.len -= num
-	r.head = head
 	return b
 }
 
