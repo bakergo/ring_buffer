@@ -324,6 +324,110 @@ func TestInsert_OverEdge5(t *testing.T) {
 	AssertBufferExactly(t, b, []int{1, 6, 2, 3, 4, 5})
 }
 
+func TestRemove_SingleElt(t *testing.T) {
+	b := New[int](10)
+	data := []int{1}
+
+	b.Append(data...)
+
+	elt := b.Remove(0)
+
+	AssertEquals(t, elt, 1)
+	AssertBufferEmpty(t, b)
+}
+
+func TestRemove_LastElt(t *testing.T) {
+	b := New[int](10)
+	data := []int{1, 2}
+
+	b.Append(data...)
+
+	elt := b.Remove(1)
+
+	AssertEquals(t, elt, 2)
+	AssertBufferExactly(t, b, []int{1})
+}
+
+func TestRemove_FirstElt(t *testing.T) {
+	b := New[int](10)
+	data := []int{1, 2}
+
+	b.Append(data...)
+
+	elt := b.Remove(0)
+
+	AssertEquals(t, elt, 1)
+	AssertBufferExactly(t, b, []int{2})
+}
+
+func TestRemove_WorksWhenIndexOverEnd(t *testing.T) {
+	b := New[int](10)
+	b.head = 8
+	data := []int{1, 2, 3, 4, 5}
+
+	b.Append(data...)
+
+	elt := b.Remove(1)
+
+	AssertEquals(t, elt, 2)
+	AssertBufferExactly(t, b, []int{1, 3, 4, 5})
+}
+
+func TestRemove_WorksWhenIndexUnderEnd(t *testing.T) {
+	b := New[int](10)
+	b.head = 8
+	data := []int{1, 2, 3, 4, 5}
+
+	b.Append(data...)
+
+	elt := b.Remove(3)
+
+	AssertEquals(t, elt, 4)
+	AssertBufferExactly(t, b, []int{1, 2, 3, 5})
+}
+
+func TestCopyFrom_WhenB2Overflow(t *testing.T) {
+	b := New[int](10)
+	b2 := New[int](5)
+	b2.head = 4
+	data := []int{1, 2, 3, 4, 5}
+	data2 := []int{6, 7, 8, 9}
+	b.Append(data...)
+	b2.Append(data2...)
+
+	b.CopyFrom(b2)
+
+	AssertBufferExactly(t, b, []int{1, 2, 3, 4, 5, 6, 7, 8, 9})
+}
+
+func TestCopyFrom_WhenPlentyOfSpace(t *testing.T) {
+	b := New[int](10)
+	b2 := New[int](5)
+	data := []int{1, 2, 3, 4, 5}
+	data2 := []int{6, 7, 8, 9}
+	b.Append(data...)
+	b2.Append(data2...)
+
+	b.CopyFrom(b2)
+
+	AssertBufferExactly(t, b, []int{1, 2, 3, 4, 5, 6, 7, 8, 9})
+}
+
+func TestCopyFrom_WhenEmpty(t *testing.T) {
+	b := New[int](10)
+	b2 := New[int](10)
+
+	b.CopyFrom(b2)
+
+	AssertBufferEmpty(t, b)
+}
+
+func AssertEquals[T constraints.Integer](t *testing.T, have T, expect T) {
+	if have != expect {
+		t.Errorf("expected to have %d, got %d", expect, have)
+	}
+}
+
 func AssertSliceExactly[T constraints.Integer](t *testing.T, have []T, expect []T) {
 	if len(have) != len(expect) {
 		t.Errorf("expected slice to contain %d, got %d", len(expect),
@@ -334,6 +438,13 @@ func AssertSliceExactly[T constraints.Integer](t *testing.T, have []T, expect []
 			t.Errorf("expected %d got %d", d, have[i])
 		}
 	}
+}
+
+func AssertBufferEmpty[T constraints.Integer](t *testing.T, b *RingBuffer[T]) {
+	if b.Len() != 0 {
+		t.Error("expected buffer to be empty")
+	}
+	// TODO: Dump items in b
 }
 
 func AssertBufferExactly[T constraints.Integer](t *testing.T, b *RingBuffer[T], expected []T) {

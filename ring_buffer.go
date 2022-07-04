@@ -157,7 +157,7 @@ func (r *RingBuffer[T]) Insert(v T, i int) {
 }
 
 func (r *RingBuffer[T]) Remove(i int) T {
-	if i >= r.len {
+	if i >= r.len || i < 0 {
 		panic("index out of bounds")
 	}
 	idx := r.idx(i)
@@ -172,7 +172,7 @@ func (r *RingBuffer[T]) Remove(i int) T {
 	//   Shift head:idx-1 to head+1:idx
 
 	if idx < last {
-		copy(r.buf[idx:], r.buf[idx+1:])
+		copy(r.buf[idx:last-1], r.buf[idx+1:last])
 	} else if idx > last {
 		copy(r.buf[r.head+1:idx+1], r.buf[r.head:idx])
 		r.head++
@@ -188,11 +188,12 @@ func (r *RingBuffer[T]) CopyFrom(r2 *RingBuffer[T]) {
 	}
 
 	r2end := r2.head + r2.len
+
 	if r2end > cap(r2.buf) {
 		r.Append(r2.buf[r2.head:]...)
 		r.Append(r2.buf[:(r2.head+r2.len)%cap(r2.buf)]...)
 	} else {
 		r.Append(r2.buf[r2.head : r2.head+r2.len]...)
 	}
-	r.len += r2.len
+	// r.len += r2.len
 }
