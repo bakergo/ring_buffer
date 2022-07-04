@@ -110,11 +110,11 @@ func (r *RingBuffer[T]) Get(i int) T {
 }
 
 func (r *RingBuffer[T]) idx(i int) int {
-	return (r.head + i) % cap(r.buf)
+	return (r.head + cap(r.buf) + i) % cap(r.buf)
 }
 
 func (r *RingBuffer[T]) Insert(v T, i int) {
-	if i > r.len {
+	if i > r.len || i < 0 {
 		panic("index out of bounds")
 	}
 	idx := r.idx(i)
@@ -139,6 +139,7 @@ func (r *RingBuffer[T]) Insert(v T, i int) {
 		if r.head > 0 {
 			copy(r.buf[r.head-1:idx], r.buf[r.head:idx+1])
 			r.head--
+			idx--
 		} else {
 			// r.head == 0
 			copy(r.buf[idx+1:], r.buf[idx:])
@@ -146,6 +147,10 @@ func (r *RingBuffer[T]) Insert(v T, i int) {
 	} else if idx < r.head {
 		// We're split over 0 -- Shift out.
 		copy(r.buf[idx+1:last+1], r.buf[idx:last])
+	} else {
+		// idx == r.head
+		r.head = r.idx(-1)
+		idx = r.head
 	}
 	r.buf[idx] = v
 	r.len++

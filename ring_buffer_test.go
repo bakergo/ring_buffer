@@ -242,6 +242,88 @@ func TestRingBuffer_PopLeft(t *testing.T) {
 	AssertBufferExactly(t, b, arrExpected)
 }
 
+func TestInsert_Empty(t *testing.T) {
+	b := New[int](10)
+
+	b.Insert(1, 0)
+
+	AssertBufferExactly(t, b, []int{1})
+}
+
+func TestInsert_AtEnd(t *testing.T) {
+	b := New[int](10)
+
+	b.Insert(1, 0)
+	b.Insert(2, 1)
+
+	AssertBufferExactly(t, b, []int{1, 2})
+}
+
+func TestInsert_AtBeginning(t *testing.T) {
+	b := New[int](10)
+
+	b.Insert(1, 0)
+	b.Insert(2, 0)
+
+	AssertBufferExactly(t, b, []int{2, 1})
+}
+
+func TestInsert_WhenInMiddle(t *testing.T) {
+	b := New[int](10)
+	b.head = 5
+
+	b.Insert(1, 0)
+	b.Insert(2, 0)
+
+	AssertBufferExactly(t, b, []int{2, 1})
+}
+
+func TestInsert_OverEdge2(t *testing.T) {
+	b := New[int](10)
+	b.head = 9
+
+	b.Insert(1, 0)
+	b.Insert(2, 1)
+	b.Insert(3, 0)
+	b.Insert(4, 0)
+	b.Insert(5, 0)
+
+	AssertBufferExactly(t, b, []int{5, 4, 3, 1, 2})
+}
+
+func TestInsert_OverEdge3(t *testing.T) {
+	b := New[int](10)
+	b.head = 8
+	data := []int{1, 2, 3, 4, 5}
+
+	b.Append(data...)
+	b.Insert(6, 3)
+
+	AssertBufferExactly(t, b, []int{1, 2, 3, 6, 4, 5})
+}
+
+func TestInsert_OverEdge4(t *testing.T) {
+	b := New[int](10)
+	b.head = 8
+	data := []int{1, 2, 3, 4, 5}
+
+	b.Append(data...)
+	b.Insert(6, 1)
+
+	AssertBufferExactly(t, b, []int{1, 6, 2, 3, 4, 5})
+}
+
+func TestInsert_OverEdge5(t *testing.T) {
+	b := New[int](10)
+	data := []int{1, 2, 3, 4, 5}
+
+	b.Append(data...)
+
+	b.Insert(6, 1)
+
+	AssertBufferExactly(t, b, []int{1, 6, 2, 3, 4, 5})
+}
+
 func AssertSliceExactly[T constraints.Integer](t *testing.T, have []T, expect []T) {
 	if len(have) != len(expect) {
 		t.Errorf("expected slice to contain %d, got %d", len(expect),
