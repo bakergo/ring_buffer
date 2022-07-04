@@ -1,11 +1,13 @@
 package main
 
 type RingBuffer[T any] struct {
-	head int
-	len  int
-	buf  []T
+	noCopy noCopy
+	head   int
+	len    int
+	buf    []T
 }
 
+// Creates a new RingBuffer with a capacity of `sz` items.
 func New[T any](sz int) *RingBuffer[T] {
 	return &RingBuffer[T]{
 		head: 0,
@@ -14,14 +16,18 @@ func New[T any](sz int) *RingBuffer[T] {
 	}
 }
 
+// Returns the utilized capacity of the buffer.
 func (r *RingBuffer[T]) Len() int {
 	return r.len
 }
 
+// Returns the maximum capacity of the buffer.
 func (r *RingBuffer[T]) Cap() int {
 	return cap(r.buf)
 }
 
+// Inserts `d` items after the last item in the buffer.
+// If the ring buffer does not have sufficient storage for the items, panic.
 func (r *RingBuffer[T]) Append(d ...T) {
 	if r.len+len(d) > cap(r.buf) {
 		panic("insert over capacity")
@@ -40,6 +46,8 @@ func (r *RingBuffer[T]) Append(d ...T) {
 	r.len += len(d)
 }
 
+// Inserts items before the first item in the buffer.
+// If the buffer does not have sufficient storage for the items, panic.
 func (r *RingBuffer[T]) Prepend(d ...T) {
 	if r.len+len(d) > cap(r.buf) {
 		panic("insert over capacity")
@@ -56,6 +64,8 @@ func (r *RingBuffer[T]) Prepend(d ...T) {
 	r.len += len(d)
 }
 
+// Removes and returns `num` items with the highest indices.
+// If `num` is higher than the number of items, truncates and returns.
 func (r *RingBuffer[T]) PopLast(num int) []T {
 	if num > r.len {
 		num = r.len
@@ -78,6 +88,8 @@ func (r *RingBuffer[T]) PopLast(num int) []T {
 	return b
 }
 
+// Removes and returns the first `num` items from the buffer.
+// If `num` is greater than the number of items, truncates completely.
 func (r *RingBuffer[T]) PopFirst(num int) []T {
 	if num > r.len {
 		num = r.len
@@ -101,19 +113,33 @@ func (r *RingBuffer[T]) PopFirst(num int) []T {
 	return b
 }
 
+// Returns an item at the specified index `i`
 func (r *RingBuffer[T]) Get(i int) T {
-	if i >= r.len {
+	if i >= r.len || i < 0 {
 		panic("index out of bounds")
 	}
-	idx := (r.head + i) % cap(r.buf)
-	return r.buf[idx]
+	return r.buf[r.idx(i)]
+}
+
+// Replaces an item at the index `i` with the value `v`.
+// If i == len, grows the RingBuffer
+func (r *RingBuffer[T]) Set(i int, v T) {
+	if i > r.len || i < 0 || i >= cap(r.buf) {
+		panic("index out of bounds")
+	}
+	r.buf[r.idx(i)] = v
+	if i == r.len {
+		r.len++
+	}
 }
 
 func (r *RingBuffer[T]) idx(i int) int {
 	return (r.head + cap(r.buf) + i) % cap(r.buf)
 }
 
-func (r *RingBuffer[T]) Insert(v T, i int) {
+// Inserts an item before the specified index.
+// If an item is already present at `i`, performs an in-order shift.
+func (r *RingBuffer[T]) Insert(i int, v T) {
 	if i > r.len || i < 0 {
 		panic("index out of bounds")
 	}
@@ -156,6 +182,8 @@ func (r *RingBuffer[T]) Insert(v T, i int) {
 	r.len++
 }
 
+// Removes an item at the specified index.
+// Other items will be shifted so the collection remains in order.
 func (r *RingBuffer[T]) Remove(i int) T {
 	if i >= r.len || i < 0 {
 		panic("index out of bounds")
@@ -195,5 +223,53 @@ func (r *RingBuffer[T]) CopyFrom(r2 *RingBuffer[T]) {
 	} else {
 		r.Append(r2.buf[r2.head : r2.head+r2.len]...)
 	}
-	// r.len += r2.len
 }
+
+// Removes the last `num` data in the ring buffer.
+func (r *RingBuffer[T]) TruncLast(num int) {
+	if num > r.len {
+		num = r.len
+	}
+	if num <= 0 {
+		return
+	}
+	r.len -= num
+}
+
+// Removes the first `num` data in the ring buffer.
+func (r *RingBuffer[T]) TruncFirst(num int) {
+	if num > r.len {
+		num = r.len
+	}
+	if num <= 0 {
+		return
+	}
+
+	last := r.idx(num)
+	r.head = last
+	r.len -= num
+}
+
+// Returns a shallow copy of the data contained in the RingBuffer as a slice.
+func (r *RingBuffer[T]) AsSlice() []T {
+	b := make([]T, r.len)
+	first := r.idx(0)
+	last := r.idx(r.len)
+
+	if r.len == 0 {
+		return b
+	}
+	if first < last {
+		copy(b, r.buf[first:])
+		return b
+	}
+	stride := cap(r.buf) - r.head
+	copy(b[:stride], r.buf[first:])
+	copy(b[stride:], r.buf[:last])
+	return b
+}
+
+type noCopy struct{}
+
+func (*noCopy) Lock()   {}
+func (*noCopy) Unlock() {}

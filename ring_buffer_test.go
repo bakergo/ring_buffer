@@ -242,10 +242,36 @@ func TestRingBuffer_PopLeft(t *testing.T) {
 	AssertBufferExactly(t, b, arrExpected)
 }
 
+func TestSet_Empty(t *testing.T) {
+	b := New[int](10)
+
+	b.Set(0, 1)
+
+	AssertBufferExactly(t, b, []int{1})
+}
+
+func TestSet_Middle(t *testing.T) {
+	b := New[int](10)
+
+	b.Append(1, 2, 3)
+	b.Set(1, 4)
+
+	AssertBufferExactly(t, b, []int{1, 4, 3})
+}
+
+func TestSet_End(t *testing.T) {
+	b := New[int](10)
+
+	b.Append(1, 2, 3)
+	b.Set(3, -1)
+
+	AssertBufferExactly(t, b, []int{1, 2, 3, -1})
+}
+
 func TestInsert_Empty(t *testing.T) {
 	b := New[int](10)
 
-	b.Insert(1, 0)
+	b.Insert(0, 1)
 
 	AssertBufferExactly(t, b, []int{1})
 }
@@ -253,8 +279,8 @@ func TestInsert_Empty(t *testing.T) {
 func TestInsert_AtEnd(t *testing.T) {
 	b := New[int](10)
 
-	b.Insert(1, 0)
-	b.Insert(2, 1)
+	b.Insert(0, 1)
+	b.Insert(1, 2)
 
 	AssertBufferExactly(t, b, []int{1, 2})
 }
@@ -262,8 +288,8 @@ func TestInsert_AtEnd(t *testing.T) {
 func TestInsert_AtBeginning(t *testing.T) {
 	b := New[int](10)
 
-	b.Insert(1, 0)
-	b.Insert(2, 0)
+	b.Insert(0, 1)
+	b.Insert(0, 2)
 
 	AssertBufferExactly(t, b, []int{2, 1})
 }
@@ -272,8 +298,8 @@ func TestInsert_WhenInMiddle(t *testing.T) {
 	b := New[int](10)
 	b.head = 5
 
-	b.Insert(1, 0)
-	b.Insert(2, 0)
+	b.Insert(0, 1)
+	b.Insert(0, 2)
 
 	AssertBufferExactly(t, b, []int{2, 1})
 }
@@ -282,11 +308,11 @@ func TestInsert_OverEdge2(t *testing.T) {
 	b := New[int](10)
 	b.head = 9
 
-	b.Insert(1, 0)
-	b.Insert(2, 1)
-	b.Insert(3, 0)
-	b.Insert(4, 0)
-	b.Insert(5, 0)
+	b.Insert(0, 1)
+	b.Insert(1, 2)
+	b.Insert(0, 3)
+	b.Insert(0, 4)
+	b.Insert(0, 5)
 
 	AssertBufferExactly(t, b, []int{5, 4, 3, 1, 2})
 }
@@ -297,7 +323,7 @@ func TestInsert_OverEdge3(t *testing.T) {
 	data := []int{1, 2, 3, 4, 5}
 
 	b.Append(data...)
-	b.Insert(6, 3)
+	b.Insert(3, 6)
 
 	AssertBufferExactly(t, b, []int{1, 2, 3, 6, 4, 5})
 }
@@ -308,7 +334,7 @@ func TestInsert_OverEdge4(t *testing.T) {
 	data := []int{1, 2, 3, 4, 5}
 
 	b.Append(data...)
-	b.Insert(6, 1)
+	b.Insert(1, 6)
 
 	AssertBufferExactly(t, b, []int{1, 6, 2, 3, 4, 5})
 }
@@ -319,7 +345,7 @@ func TestInsert_OverEdge5(t *testing.T) {
 
 	b.Append(data...)
 
-	b.Insert(6, 1)
+	b.Insert(1, 6)
 
 	AssertBufferExactly(t, b, []int{1, 6, 2, 3, 4, 5})
 }
@@ -420,6 +446,160 @@ func TestCopyFrom_WhenEmpty(t *testing.T) {
 	b.CopyFrom(b2)
 
 	AssertBufferEmpty(t, b)
+}
+
+func TestTruncLast_WhenEmpty(t *testing.T) {
+	b := New[int](10)
+
+	b.TruncLast(10)
+
+	AssertBufferEmpty(t, b)
+}
+
+func TestTruncLast_RemovesAll(t *testing.T) {
+	b := New[int](10)
+
+	b.Append(1, 2)
+	b.TruncLast(2)
+
+	AssertBufferEmpty(t, b)
+}
+
+func TestTruncLast_RemovesNotAll(t *testing.T) {
+	b := New[int](10)
+
+	b.Append(1, 2, 3)
+	b.TruncLast(1)
+
+	AssertBufferExactly(t, b, []int{1, 2})
+}
+
+func TestTruncLast_0RemovesNone(t *testing.T) {
+	b := New[int](10)
+
+	b.Append(1, 2, 3)
+	b.TruncLast(0)
+
+	AssertBufferExactly(t, b, []int{1, 2, 3})
+
+}
+
+func TestTruncLast_RemovesSomeWhenFull(t *testing.T) {
+	b := New[int](3)
+
+	b.Append(1, 2, 3)
+	b.TruncLast(1)
+
+	AssertBufferExactly(t, b, []int{1, 2})
+
+}
+
+func TestTruncLast_RemovesAllWhenFull(t *testing.T) {
+	b := New[int](3)
+
+	b.Append(1, 2, 3)
+	b.TruncLast(4)
+
+	AssertBufferEmpty(t, b)
+}
+
+func TestTruncFirst_WhenEmpty(t *testing.T) {
+	b := New[int](10)
+
+	b.TruncFirst(10)
+
+	AssertBufferEmpty(t, b)
+}
+
+func TestTruncFirst_RemovesAll(t *testing.T) {
+	b := New[int](10)
+
+	b.Append(1, 2)
+	b.TruncFirst(2)
+
+	AssertBufferEmpty(t, b)
+}
+
+func TestTruncFirst_RemovesNotAll(t *testing.T) {
+	b := New[int](10)
+
+	b.Append(1, 2, 3)
+	b.TruncFirst(1)
+
+	AssertBufferExactly(t, b, []int{2, 3})
+}
+
+func TestTruncFirst_0RemovesNone(t *testing.T) {
+	b := New[int](10)
+
+	b.Append(1, 2, 3)
+	b.TruncFirst(0)
+
+	AssertBufferExactly(t, b, []int{1, 2, 3})
+
+}
+
+func TestTruncFirst_RemovesSomeWhenFull(t *testing.T) {
+	b := New[int](3)
+
+	b.Append(1, 2, 3)
+	b.TruncFirst(1)
+
+	AssertBufferExactly(t, b, []int{2, 3})
+
+}
+
+func TestTruncFirst_RemovesAllWhenFull(t *testing.T) {
+	b := New[int](3)
+
+	b.Append(1, 2, 3)
+	b.TruncFirst(4)
+
+	AssertBufferEmpty(t, b)
+}
+
+func TestAsSlice_WhenSome(t *testing.T) {
+	b := New[int](5)
+	data := []int{1, 2, 3}
+
+	b.Append(data...)
+
+	AssertSliceExactly(t, b.AsSlice(), data)
+}
+
+func TestAsSlice_WhenFull(t *testing.T) {
+	b := New[int](5)
+	data := []int{1, 2, 3, 4, 5}
+
+	b.Append(data...)
+
+	AssertSliceExactly(t, b.AsSlice(), data)
+}
+
+func TestAsSlice_WhenEmpty(t *testing.T) {
+	b := New[int](5)
+
+	AssertSliceExactly(t, b.AsSlice(), []int{})
+}
+
+func TestAsSlice_WhenOverEnd(t *testing.T) {
+	b := New[int](5)
+	b.head = 3
+	data := []int{1, 2, 3}
+
+	b.Append(data...)
+
+	AssertSliceExactly(t, b.AsSlice(), data)
+}
+
+func TestAsSlice_WhenOverEndFull(t *testing.T) {
+	b := New[int](5)
+	b.head = 3
+	data := []int{1, 2, 3, 4, 5}
+
+	b.Append(data...)
+
+	AssertSliceExactly(t, b.AsSlice(), data)
 }
 
 func AssertEquals[T constraints.Integer](t *testing.T, have T, expect T) {
