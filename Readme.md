@@ -13,10 +13,12 @@ There's few implementations of a ring buffer yet readily available on Github and
 ## Example Usage
 
 ```
+import "github.com/bakergo/ring_buffer"
+
 func demo() {
 
   // Defines a new int RingBuffer of capacity 10
-  rb := ring_buffer.New[int](10)
+  rb := rings.New[int](10)
 
   // Append/Prepend methods exist
   rb.Append(1, 2, 3)

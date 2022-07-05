@@ -1,4 +1,4 @@
-package main
+package rings
 
 type RingBuffer[T any] struct {
 	noCopy noCopy
