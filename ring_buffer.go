@@ -205,6 +205,8 @@ func (r *RingBuffer[T]) Remove(i int) T {
 		copy(r.buf[r.head+1:idx+1], r.buf[r.head:idx])
 		r.head++
 	}
+	var mt T
+	r.buf[r.idx(r.len-1)] = mt
 	r.len--
 	return v
 }
@@ -233,6 +235,10 @@ func (r *RingBuffer[T]) TruncLast(num int) {
 	if num <= 0 {
 		return
 	}
+	for i := 0; i < num; i++ {
+		var mt T
+		r.buf[r.idx(r.len-i-1)] = mt
+	}
 	r.len -= num
 }
 
@@ -243,6 +249,10 @@ func (r *RingBuffer[T]) TruncFirst(num int) {
 	}
 	if num <= 0 {
 		return
+	}
+	for i := 0; i < num; i++ {
+		var mt T
+		r.buf[r.idx(i)] = mt
 	}
 
 	last := r.idx(num)
